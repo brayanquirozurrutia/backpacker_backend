@@ -6,6 +6,7 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import com.example.user.Users
+import org.flywaydb.core.Flyway
 
 object DatabaseConfig {
     fun init() {
@@ -20,15 +21,19 @@ object DatabaseConfig {
             validate()
         }
         val dataSource = HikariDataSource(config)
-        Database.connect(dataSource)
+
+        val flyway = Flyway.configure()
+            .dataSource(dataSource)
+            .baselineOnMigrate(true)
+            .load()
 
         try {
-            transaction {
-                SchemaUtils.create(Users)
-                println("Tables created successfully")
-            }
+            flyway.migrate()
+            println("Migraciones ejecutadas correctamente")
         } catch (e: Exception) {
-            println("Error creating tables: ${e.message}")
+            println("Error al ejecutar migraciones: ${e.message}")
         }
+
+        Database.connect(dataSource)
     }
 }
