@@ -35,4 +35,6 @@ dependencies {
     implementation("com.zaxxer:HikariCP:4.0.3")
     implementation("io.ktor:ktor-server-content-negotiation-jvm:3.0.0-rc-1")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0-rc-1")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.41.1")
+    implementation("org.flywaydb:flyway-core:9.0.0")
 }
