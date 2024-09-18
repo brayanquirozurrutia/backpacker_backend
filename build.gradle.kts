@@ -37,4 +37,6 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0-rc-1")
     implementation("org.jetbrains.exposed:exposed-java-time:0.41.1")
     implementation("org.flywaydb:flyway-core:9.0.0")
+    implementation("ch.qos.logback:logback-classic:1.4.12")
+    implementation("org.mindrot:jbcrypt:0.4")
 }
