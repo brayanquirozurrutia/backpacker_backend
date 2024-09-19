@@ -4,13 +4,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
-fun convertDateFormat(dateString: String): String {
+fun convertDateFormatIfNecessary(date: String): String {
+    val inputFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+    val outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
     return try {
-        val formatterInput = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-        val formatterOutput = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-        val date = LocalDate.parse(dateString, formatterInput)
-        date.format(formatterOutput)
+        val parsedDate = LocalDate.parse(date, inputFormatter)
+        parsedDate.format(outputFormatter)
     } catch (e: DateTimeParseException) {
-        throw e
+        date
     }
 }
