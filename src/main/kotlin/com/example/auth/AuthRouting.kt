@@ -2,7 +2,7 @@ package com.example.auth
 
 import com.example.user.Gender
 import com.example.user.UserRepository
-import com.example.utils.convertDateFormat
+import com.example.utils.convertDateFormatIfNecessary
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -43,12 +43,12 @@ fun Route.authRoutes() {
         }
 
         val formattedBirthDate = try {
-            val formattedDate = convertDateFormat(cleanedBirthDate)
+            val formattedDate = convertDateFormatIfNecessary(cleanedBirthDate)
             LocalDate.parse(formattedDate)
         } catch (e: DateTimeParseException) {
             call.respond(
                 HttpStatusCode.BadRequest,
-                AuthResponse(success = false, message = "Formato de fecha no válida")
+                AuthResponse(success = false, message = "Formato de fecha no válido")
             )
             return@post
         }
