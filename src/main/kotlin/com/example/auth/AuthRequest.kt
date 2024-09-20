@@ -18,3 +18,15 @@ data class RegisterRequest(
     val password: String,
     val confirmPassword: String
 )
+
+@Serializable
+data class ResetPasswordRequest(
+    val email: String,
+    val password: String,
+    val confirmPassword: String
+)
+
+@Serializable
+data class ForgotPasswordRequest(
+    val email: String
+)
