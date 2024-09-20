@@ -101,4 +101,59 @@ fun Route.authRoutes() {
             )
         }
     }
+
+    post("/forgot-password") {
+        val request = call.receive<ForgotPasswordRequest>()
+        val user = UserRepository.findUserByEmail(request.email)
+
+        if (user == null) {
+            call.respond(
+                HttpStatusCode.NotFound,
+                AuthResponse(success = false, message = "El correo no está registrado")
+            )
+        } else {
+            call.respond(
+                HttpStatusCode.OK,
+                AuthResponse(success = true, message = "El correo está registrado")
+            )
+        }
+    }
+
+    post("/reset-password") {
+        val resetRequest = call.receive<ResetPasswordRequest>()
+
+        val email = resetRequest.email.trim()
+        val newPassword = resetRequest.password
+        val confirmPassword = resetRequest.confirmPassword
+
+        val user = UserRepository.findUserByEmail(email)
+        if (user == null) {
+            call.respond(
+                HttpStatusCode.NotFound,
+                AuthResponse(success = false, message = "El correo electrónico no está registrado")
+            )
+            return@post
+        }
+
+        if (newPassword != confirmPassword) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                AuthResponse(success = false, message = "Las contraseñas no coinciden")
+            )
+            return@post
+        }
+
+        try {
+            UserRepository.updatePassword(email, newPassword)
+            call.respond(
+                HttpStatusCode.OK,
+                AuthResponse(success = true, message = "Contraseña actualizada exitosamente")
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                AuthResponse(success = false, message = "Ocurrió un error al actualizar la contraseña")
+            )
+        }
+    }
 }

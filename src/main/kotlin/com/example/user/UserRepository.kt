@@ -39,4 +39,14 @@ object UserRepository {
         val hashedPassword = user[Users.password]
         return BCrypt.checkpw(password, hashedPassword)
     }
+
+    fun updatePassword(email: String, newPassword: String) {
+        val hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+
+        transaction {
+            Users.update({ Users.email eq email }) {
+                it[password] = hashedPassword
+            }
+        }
+    }
 }
