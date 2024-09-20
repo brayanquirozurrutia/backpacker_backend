@@ -109,12 +109,12 @@ fun Route.authRoutes() {
         if (user == null) {
             call.respond(
                 HttpStatusCode.NotFound,
-                AuthResponse(success = false, message = "El correo no está registrado")
+                AuthResponse(success = false, message = "Correo no válido")
             )
         } else {
             call.respond(
                 HttpStatusCode.OK,
-                AuthResponse(success = true, message = "El correo está registrado")
+                AuthResponse(success = true, message = "ok")
             )
         }
     }
@@ -123,8 +123,8 @@ fun Route.authRoutes() {
         val resetRequest = call.receive<ResetPasswordRequest>()
 
         val email = resetRequest.email.trim()
-        val newPassword = resetRequest.password
-        val confirmPassword = resetRequest.confirmPassword
+        val newPassword = resetRequest.password.trim()
+        val confirmPassword = resetRequest.confirmPassword.trim()
 
         val user = UserRepository.findUserByEmail(email)
         if (user == null) {
