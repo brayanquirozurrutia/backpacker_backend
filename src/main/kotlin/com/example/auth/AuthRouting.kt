@@ -15,10 +15,25 @@ fun Route.authRoutes() {
         val loginRequest = call.receive<AuthRequest>()
         val isAuthenticated = AuthService.authenticate(loginRequest.email, loginRequest.password)
 
-        val response = AuthResponse(
-            success = isAuthenticated,
-            message = if (isAuthenticated) "User authenticated successfully" else "Invalid email or password"
-        )
+        val token = if (isAuthenticated) {
+            AuthService.generateTokenForUser(loginRequest.email)
+        } else {
+            null
+        }
+
+        val response = if (token != null) {
+            LoginResponse(
+                success = true,
+                message = "User authenticated successfully",
+                token = token
+            )
+        } else {
+            LoginResponse(
+                success = false,
+                message = "Invalid email or password",
+                token = null
+            )
+        }
 
         call.respond(HttpStatusCode.OK, response)
     }
@@ -155,5 +170,9 @@ fun Route.authRoutes() {
                 AuthResponse(success = false, message = "Ocurrió un error al actualizar la contraseña")
             )
         }
+    }
+
+    post("/home") {
+        call.respond(HttpStatusCode.OK, "Welcome to the home page!")
     }
 }
