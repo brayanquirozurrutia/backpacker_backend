@@ -1,5 +1,6 @@
 package com.example.auth
 
+import com.example.plugins.UserIdKey
 import com.example.user.Gender
 import com.example.user.UserRepository
 import com.example.utils.convertDateFormatIfNecessary
@@ -170,9 +171,5 @@ fun Route.authRoutes() {
                 AuthResponse(success = false, message = "Ocurrió un error al actualizar la contraseña")
             )
         }
-    }
-
-    post("/home") {
-        call.respond(HttpStatusCode.OK, "Welcome to the home page!")
     }
 }
