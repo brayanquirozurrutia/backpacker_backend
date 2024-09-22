@@ -14,9 +14,3 @@ data class LoginResponse(
     val message: String? = null,
     val token: String? = null
 )
-
-@Serializable
-data class CoordinatesResponse(
-    val latitude: Double,
-    val longitude: Double
-)
