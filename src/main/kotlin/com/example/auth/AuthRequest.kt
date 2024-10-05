@@ -30,3 +30,8 @@ data class ResetPasswordRequest(
 data class ForgotPasswordRequest(
     val email: String
 )
+
+@Serializable
+data class  ReSendActivationRequest(
+    val email: String
+)
