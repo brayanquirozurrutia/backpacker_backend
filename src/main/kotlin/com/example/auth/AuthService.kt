@@ -1,7 +1,6 @@
 package com.example.auth
 
 import com.example.user.UserRepository
-import com.example.user.Users
 
 object AuthService {
     fun authenticate(email: String, password: String): Boolean {
@@ -11,7 +10,7 @@ object AuthService {
     fun generateTokenForUser(email: String): String? {
         val user = UserRepository.findUserByEmail(email)
         return if (user != null) {
-            JwtConfig.generateToken(user[Users.id].value.toString())
+            JwtConfig.generateToken(user.id.toString())
         } else {
             null
         }

@@ -14,4 +14,5 @@ object Users : IntIdTable() {
     val birthDate = date("birth_date")
     val gender = enumerationByName("gender", 10, Gender::class)
     val password = varchar("password", 64)
+    val isActive = bool("is_active").default(false)
 }

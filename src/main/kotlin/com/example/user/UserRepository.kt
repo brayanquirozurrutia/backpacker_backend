@@ -13,30 +13,34 @@ object UserRepository {
         birthDate: LocalDate,
         gender: Gender,
         password: String
-    ) {
+    ): Int {
         val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
+        var userId: Int = -1
 
         transaction {
-            Users.insert {
+            userId = Users.insertAndGetId {
                 it[Users.firstName] = firstName
                 it[Users.lastName] = lastName
                 it[Users.email] = email
                 it[Users.birthDate] = birthDate
                 it[Users.gender] = gender
                 it[Users.password] = hashedPassword
-            }
+            }.value
         }
+        return userId
     }
 
-    fun findUserByEmail(email: String): ResultRow? {
+    fun findUserByEmail(email: String): User? {
         return transaction {
-            Users.select { Users.email eq email }.singleOrNull()
+            Users.select { Users.email eq email }
+                .map { it.toUser() }
+                .singleOrNull()
         }
     }
 
     fun checkPassword(email: String, password: String): Boolean {
         val user = findUserByEmail(email) ?: return false
-        val hashedPassword = user[Users.password]
+        val hashedPassword = user.password
         return BCrypt.checkpw(password, hashedPassword)
     }
 

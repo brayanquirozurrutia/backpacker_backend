@@ -1,6 +1,5 @@
 package com.example.auth
 
-import com.example.plugins.UserIdKey
 import com.example.user.Gender
 import com.example.user.UserRepository
 import com.example.utils.convertDateFormatIfNecessary
@@ -10,6 +9,7 @@ import io.ktor.server.routing.*
 import io.ktor.http.*
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
+import com.example.services.EmailService
 
 fun Route.authRoutes() {
     post("/login") {
@@ -98,7 +98,7 @@ fun Route.authRoutes() {
         }
 
         try {
-            UserRepository.createUser(
+            val userId = UserRepository.createUser(
                 cleanedFirstName,
                 cleanedLastName,
                 cleanedEmail,
@@ -106,6 +106,20 @@ fun Route.authRoutes() {
                 gender,
                 password
             )
+
+            val activationToken = ActivationTokenService.generateToken(userId)
+
+            EmailService.sendEmailWithBrevoAPI(
+                toEmail = cleanedEmail,
+                toName = cleanedFirstName,
+                subject = "Cuenta creada exitosamente",
+                htmlContent = """
+                    <h1>Hola $cleanedFirstName,</h1>
+                    
+                    <p>Tu código de activación de cuenta es: <strong>$activationToken</strong>.</p>
+                    """.trimIndent()
+            )
+
             call.respond(
                 HttpStatusCode.Created,
                 AuthResponse(success = true, message = "Usuario registrado exitosamente")
@@ -114,6 +128,89 @@ fun Route.authRoutes() {
             call.respond(
                 HttpStatusCode.InternalServerError,
                 AuthResponse(success = false, message = "Ocurrió un error al registrar el usuario")
+            )
+        }
+    }
+
+    post("/activate-account/{token}") {
+        val token = call.parameters["token"]
+
+        if (token.isNullOrBlank()) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                AuthResponse(success = false, message = "Token inválido")
+            )
+            return@post
+        }
+
+        val user = ActivationTokenService.getUserByToken(token)
+
+        if (user == null) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                AuthResponse(success = false, message = "Ocurrió un error al activar la cuenta")
+            )
+            return@post
+        }
+
+        val activationSuccess = ActivationTokenService.activateAccount(token)
+
+        if (activationSuccess) {
+
+            var userName = user.firstName
+            val userEmail = user.email
+
+            EmailService.sendEmailWithBrevoAPI(
+                toEmail = userEmail,
+                toName = userName,
+                subject = "Cuenta activada exitosamente",
+                htmlContent = """
+                    <h1>Cuenta activada</h1>
+                    
+                    <p>Tu cuenta ha sido activada exitosamente.</p>
+                    """.trimIndent()
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                AuthResponse(success = true, message = "Cuenta activada exitosamente")
+            )
+        } else {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                AuthResponse(success = false, message = "Token inválido o expirado")
+            )
+        }
+    }
+
+    post("/resend-activation-code") {
+        val resendRequest = call.receive<ReSendActivationRequest>()
+        val email = resendRequest.email.trim()
+        val user = UserRepository.findUserByEmail(email)
+
+        if (user == null) {
+            call.respond(
+                HttpStatusCode.NotFound,
+                AuthResponse(success = false, message = "Correo no válido")
+            )
+        } else {
+            val userId = user.id
+            val activationToken = ActivationTokenService.generateToken(userId)
+
+            EmailService.sendEmailWithBrevoAPI(
+                toEmail = email,
+                toName = user.firstName,
+                subject = "Código de activación",
+                htmlContent = """
+                    <h1>Hola ${user.firstName},</h1>
+                    
+                    <p>Tu código de activación de cuenta es: <strong>$activationToken</strong>.</p>
+                    """.trimIndent()
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                AuthResponse(success = true, message = "Código de activación reenviado exitosamente")
             )
         }
     }
