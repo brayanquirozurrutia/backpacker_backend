@@ -1,5 +1,6 @@
 package com.example.auth
 
+import com.example.user.TokenType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -20,10 +21,14 @@ data class RegisterRequest(
 )
 
 @Serializable
-data class ResetPasswordRequest(
+data class ActivateAccountRequest(
+    val token: String
+)
+
+@Serializable
+data class ReSendTokenRequest(
     val email: String,
-    val password: String,
-    val confirmPassword: String
+    val tokenType: TokenType
 )
 
 @Serializable
@@ -32,6 +37,9 @@ data class ForgotPasswordRequest(
 )
 
 @Serializable
-data class  ReSendActivationRequest(
-    val email: String
+data class ResetPasswordRequest(
+    val email: String,
+    val password: String,
+    val confirmPassword: String,
+    val token: String
 )
