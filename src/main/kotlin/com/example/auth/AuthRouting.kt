@@ -10,6 +10,8 @@ import io.ktor.http.*
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import com.example.services.EmailService
+import com.example.user.TokenService
+import com.example.user.TokenType
 
 fun Route.authRoutes() {
     post("/login") {
@@ -61,7 +63,7 @@ fun Route.authRoutes() {
         val formattedBirthDate = try {
             val formattedDate = convertDateFormatIfNecessary(cleanedBirthDate)
             LocalDate.parse(formattedDate)
-        } catch (e: DateTimeParseException) {
+        } catch (_: DateTimeParseException) {
             call.respond(
                 HttpStatusCode.BadRequest,
                 AuthResponse(success = false, message = "Formato de fecha no válido")
@@ -79,7 +81,7 @@ fun Route.authRoutes() {
 
         val gender = try {
             Gender.valueOf(cleanedGender)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             call.respond(
                 HttpStatusCode.BadRequest,
                 AuthResponse(success = false, message = "Género no válido")
@@ -107,7 +109,7 @@ fun Route.authRoutes() {
                 password
             )
 
-            val activationToken = ActivationTokenService.generateToken(userId)
+            val activationToken = TokenService.generateToken(userId, TokenType.ACTIVATION)
 
             EmailService.sendEmailWithBrevoAPI(
                 toEmail = cleanedEmail,
@@ -124,7 +126,7 @@ fun Route.authRoutes() {
                 HttpStatusCode.Created,
                 AuthResponse(success = true, message = "Usuario registrado exitosamente")
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             call.respond(
                 HttpStatusCode.InternalServerError,
                 AuthResponse(success = false, message = "Ocurrió un error al registrar el usuario")
@@ -132,10 +134,11 @@ fun Route.authRoutes() {
         }
     }
 
-    post("/activate-account/{token}") {
-        val token = call.parameters["token"]
+    post("/activate-account") {
+        val activateRequest = call.receive<ActivateAccountRequest>()
+        val token = activateRequest.token.trim()
 
-        if (token.isNullOrBlank()) {
+        if (token.isEmpty()) {
             call.respond(
                 HttpStatusCode.BadRequest,
                 AuthResponse(success = false, message = "Token inválido")
@@ -143,7 +146,7 @@ fun Route.authRoutes() {
             return@post
         }
 
-        val user = ActivationTokenService.getUserByToken(token)
+        val user = TokenService.getUserByToken(token, TokenType.ACTIVATION)
 
         if (user == null) {
             call.respond(
@@ -153,7 +156,7 @@ fun Route.authRoutes() {
             return@post
         }
 
-        val activationSuccess = ActivationTokenService.activateAccount(token)
+        val activationSuccess = TokenService.activateAccount(token)
 
         if (activationSuccess) {
 
@@ -183,9 +186,10 @@ fun Route.authRoutes() {
         }
     }
 
-    post("/resend-activation-code") {
-        val resendRequest = call.receive<ReSendActivationRequest>()
+    post("/resend-token") {
+        val resendRequest = call.receive<ReSendTokenRequest>()
         val email = resendRequest.email.trim()
+        val tokenType = resendRequest.tokenType
         val user = UserRepository.findUserByEmail(email)
 
         if (user == null) {
@@ -195,22 +199,27 @@ fun Route.authRoutes() {
             )
         } else {
             val userId = user.id
-            val activationToken = ActivationTokenService.generateToken(userId)
+            val token = TokenService.generateToken(userId, tokenType)
+
+            val subject = when (tokenType) {
+                TokenType.ACTIVATION -> "Código de activación"
+                TokenType.PASSWORD_RESET -> "Código de restablecimiento de contraseña"
+            }
 
             EmailService.sendEmailWithBrevoAPI(
                 toEmail = email,
                 toName = user.firstName,
-                subject = "Código de activación",
+                subject = subject,
                 htmlContent = """
                     <h1>Hola ${user.firstName},</h1>
                     
-                    <p>Tu código de activación de cuenta es: <strong>$activationToken</strong>.</p>
+                    <p>Tu código es: <strong>$token</strong>.</p>
                     """.trimIndent()
             )
 
             call.respond(
                 HttpStatusCode.OK,
-                AuthResponse(success = true, message = "Código de activación reenviado exitosamente")
+                AuthResponse(success = true, message = "Código reenviado exitosamente")
             )
         }
     }
@@ -224,26 +233,53 @@ fun Route.authRoutes() {
                 HttpStatusCode.NotFound,
                 AuthResponse(success = false, message = "Correo no válido")
             )
-        } else {
-            call.respond(
-                HttpStatusCode.OK,
-                AuthResponse(success = true, message = "ok")
-            )
+            return@post
         }
+
+        val userId = user.id
+        val resetToken = TokenService.generateToken(userId, TokenType.PASSWORD_RESET)
+
+        EmailService.sendEmailWithBrevoAPI(
+            toEmail = user.email,
+            toName = user.firstName,
+            subject = "Restablecer contraseña",
+            htmlContent = """
+                <h1>Hola ${user.firstName},</h1>
+                
+                <p>Tu código de restablecimiento de contraseña es: <strong>$resetToken</strong>.</p>
+                
+                <p>Si no solicitaste restablecer tu contraseña, ignora este mensaje.</p>
+                """.trimIndent()
+        )
+
+        call.respond(
+            HttpStatusCode.OK,
+            AuthResponse(success = true, message = "Código de restablecimiento enviado exitosamente")
+        )
     }
 
     post("/reset-password") {
         val resetRequest = call.receive<ResetPasswordRequest>()
-
         val email = resetRequest.email.trim()
         val newPassword = resetRequest.password.trim()
         val confirmPassword = resetRequest.confirmPassword.trim()
-
+        val token = resetRequest.token.trim()
         val user = UserRepository.findUserByEmail(email)
+
         if (user == null) {
             call.respond(
                 HttpStatusCode.NotFound,
                 AuthResponse(success = false, message = "El correo electrónico no está registrado")
+            )
+            return@post
+        }
+
+        val tokenIsValid = TokenService.validateToken(token, TokenType.PASSWORD_RESET)
+
+        if (!tokenIsValid) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                AuthResponse(success = false, message = "Token inválido o expirado")
             )
             return@post
         }
@@ -258,11 +294,25 @@ fun Route.authRoutes() {
 
         try {
             UserRepository.updatePassword(email, newPassword)
+
+            EmailService.sendEmailWithBrevoAPI(
+                toEmail = email,
+                toName = user.firstName,
+                subject = "Contraseña actualizada",
+                htmlContent = """
+                    <h1>Hola ${user.firstName},</h1>
+                    
+                    <p>Tu contraseña ha sido actualizada exitosamente.</p>
+                    """.trimIndent()
+            )
+
+            TokenService.deleteToken(token, TokenType.PASSWORD_RESET)
+
             call.respond(
                 HttpStatusCode.OK,
                 AuthResponse(success = true, message = "Contraseña actualizada exitosamente")
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             call.respond(
                 HttpStatusCode.InternalServerError,
                 AuthResponse(success = false, message = "Ocurrió un error al actualizar la contraseña")

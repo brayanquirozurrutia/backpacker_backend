@@ -4,13 +4,16 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
 import org.flywaydb.core.Flyway
+import io.github.cdimascio.dotenv.dotenv
 
 object DatabaseConfig {
+    private val dotenv = dotenv()
+
     fun init() {
         val config = HikariConfig().apply {
-            jdbcUrl = "jdbc:postgresql://127.0.0.1:5433/backpacker"
-            username = "myuser"
-            password = "mypassword"
+            jdbcUrl = dotenv["DATABASE_URL"]
+            username = dotenv["DATABASE_USER"]
+            password = dotenv["DATABASE_PASSWORD"]
             driverClassName = "org.postgresql.Driver"
             maximumPoolSize = 10
             isAutoCommit = false
