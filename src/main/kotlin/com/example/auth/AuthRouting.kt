@@ -18,23 +18,40 @@ fun Route.authRoutes() {
         val loginRequest = call.receive<AuthRequest>()
         val isAuthenticated = AuthService.authenticate(loginRequest.email, loginRequest.password)
 
+        val user = if (isAuthenticated) {
+            UserRepository.findUserByEmail(loginRequest.email)
+        } else {
+            null
+        }
+
         val token = if (isAuthenticated) {
             AuthService.generateTokenForUser(loginRequest.email)
         } else {
             null
         }
 
-        val response = if (token != null) {
-            LoginResponse(
-                success = true,
-                message = "User authenticated successfully",
-                token = token
-            )
+        val response = if (isAuthenticated) {
+            if (user?.isActive == true && token != null) {
+                LoginResponse(
+                    success = true,
+                    message = "User authenticated successfully",
+                    token = token,
+                    isActive = true
+                )
+            } else {
+                LoginResponse(
+                    success = false,
+                    message = "La cuenta no está activa",
+                    token = null,
+                    isActive = false
+                )
+            }
         } else {
             LoginResponse(
                 success = false,
-                message = "Invalid email or password",
-                token = null
+                message = "Usuario o contraseña no válidos",
+                token = null,
+                isActive = null
             )
         }
 
@@ -137,6 +154,7 @@ fun Route.authRoutes() {
     post("/activate-account") {
         val activateRequest = call.receive<ActivateAccountRequest>()
         val token = activateRequest.token.trim()
+        val email = activateRequest.email.trim()
 
         if (token.isEmpty()) {
             call.respond(
@@ -148,10 +166,10 @@ fun Route.authRoutes() {
 
         val user = TokenService.getUserByToken(token, TokenType.ACTIVATION)
 
-        if (user == null) {
+        if (user == null || user.email != email) {
             call.respond(
                 HttpStatusCode.InternalServerError,
-                AuthResponse(success = false, message = "Ocurrió un error al activar la cuenta")
+                AuthResponse(success = false, message = "Token inválido o expirado")
             )
             return@post
         }
