@@ -22,7 +22,8 @@ data class RegisterRequest(
 
 @Serializable
 data class ActivateAccountRequest(
-    val token: String
+    val token: String,
+    val email: String
 )
 
 @Serializable
