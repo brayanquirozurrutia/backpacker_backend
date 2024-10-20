@@ -38,6 +38,14 @@ object UserRepository {
         }
     }
 
+    fun findUserById(userId: Int): User? {
+        return transaction {
+            Users.select { Users.id eq userId }
+                .map { it.toUser() }
+                .singleOrNull()
+        }
+    }
+
     fun checkPassword(email: String, password: String): Boolean {
         val user = findUserByEmail(email) ?: return false
         val hashedPassword = user.password
