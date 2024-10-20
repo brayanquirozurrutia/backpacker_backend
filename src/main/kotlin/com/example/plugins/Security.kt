@@ -11,6 +11,7 @@ import io.ktor.util.*
 
 val protectedRoutes = setOf(
     "/home",
+    "/trip"
 )
 
 fun Application.configureSecurity() {

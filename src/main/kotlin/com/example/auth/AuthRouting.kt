@@ -36,14 +36,16 @@ fun Route.authRoutes() {
                     success = true,
                     message = "User authenticated successfully",
                     token = token,
-                    isActive = true
+                    isActive = true,
+                    userId = user.id
                 )
             } else {
                 LoginResponse(
                     success = false,
                     message = "La cuenta no está activa",
                     token = null,
-                    isActive = false
+                    isActive = false,
+                    userId = null
                 )
             }
         } else {
@@ -51,7 +53,8 @@ fun Route.authRoutes() {
                 success = false,
                 message = "Usuario o contraseña no válidos",
                 token = null,
-                isActive = null
+                isActive = null,
+                userId = null
             )
         }
 
