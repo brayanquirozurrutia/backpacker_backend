@@ -9,3 +9,10 @@ data class CreateTripRequest(
     val latitudeRequested: Double,
     val longitudeRequested: Double,
 )
+
+@Serializable
+data class TripsRequest(
+    val lat: Double,
+    val lon: Double,
+    val radiusKm: Double = 10.0
+)
